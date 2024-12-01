@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs};
 
-pub fn day1a() -> Result<(u32, u32), Box<dyn std::error::Error>> {
+pub fn day1() -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let mut left_list: Vec<u32> = Vec::with_capacity(1000);
     let mut right_list: Vec<u32> = Vec::with_capacity(1000);
     let input = fs::read_to_string("./src/day1/input.txt")?;
