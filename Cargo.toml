@@ -8,5 +8,5 @@ criterion = { version = "0.5.1", ffeatures = ["html_reports"] }
 
 
 [[bench]]
-name = "day1"
+name = "aoc"
 harness = false

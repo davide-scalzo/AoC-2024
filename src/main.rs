@@ -1,16 +1,12 @@
+use advent_of_code::day2::day2;
+
 use std::time::Instant;
 
-use advent_of_code::day1::day1;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let start = Instant::now();
-    let (diff, similarity) = day1()?;
+    let now = Instant::now();
+    let result = day2();
     let end = Instant::now();
-    println!(
-        "Day1: Diff {:?} / Similarity {:?} - Time: {:?}",
-        diff,
-        similarity,
-        end - start
-    );
+
+    println!("Result: {:?}", end - now);
     Ok(())
 }
