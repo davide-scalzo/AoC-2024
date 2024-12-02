@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fs};
 
-#[inline]
 pub fn day1() -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let mut left_list: Vec<u32> = Vec::with_capacity(1000);
     let mut right_list: Vec<u32> = Vec::with_capacity(1000);

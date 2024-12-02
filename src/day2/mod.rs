@@ -1,123 +1,93 @@
-use std::{cmp::Ordering, error::Error, fs};
+use std::{error::Error, fs};
 
+#[derive(Debug)]
 struct Report {
     values: Vec<i32>,
-    direction: Option<Ordering>,
-    last_value: Option<i32>,
-    free_passes: i32,
 }
 
 #[derive(Debug)]
 pub enum ReportError {
     TooHighDiff(i32),
-    TooLowDiff(i32),
+    ZeroDiff,
     NotMonotonic(Vec<i32>),
 }
 
 impl Report {
-    pub fn from_string(input: &str, free_passes: i32) -> Self {
+    pub fn from_string(input: &str) -> Self {
         let values = input
             .split(" ")
             .map(|s| s.parse::<i32>().unwrap())
             .collect();
-        Report {
-            values,
-            free_passes,
-            direction: None,
-            last_value: None,
+        Report { values }
+    }
+
+    // [5 4 2] 3 2 1
+    // 5 [4 2 3] 2 1
+    // 5 4 [2 3 2] 1
+    // 5 4 2 [3 2 1]
+    //
+    // [4 1 2] 3 4
+    // 4 [1 2 3] 4
+    // 4 1 [2 3 4]
+    // 4 1 2 3 4
+    // 4 1 2 3 4
+    //
+    // [1 2 3] 4 0
+    // 1 [2 3 4] 0
+    // 1 2 [3 4 0]
+
+    fn compare_within_bounds(a: i32, b: i32, allowance: i32) -> bool {
+        let diff = (a - b).abs();
+        if diff <= allowance {
+            return true;
         }
+        false
     }
 
-    pub fn from_values(values: Vec<i32>, free_passes: i32) -> Self {
-        Report {
-            values,
-            free_passes,
-            direction: None,
-            last_value: None,
+    fn is_monotonic_trio(a: i32, b: i32, c: i32) -> bool {
+        if a > b && b > c {
+            return true;
         }
+        if a < b && b < c {
+            return true;
+        }
+        false
     }
 
-    fn use_free_pass(&mut self) -> Result<(), &str> {
-        if self.free_passes == 0 {
-            return Err("Too many infringements");
-        };
-        self.free_passes -= 1;
-        Ok(())
-    }
+    pub fn is_safe(&self) -> bool {
+        let mut skips = 0;
+        for (idx, item) in self.values.iter().enumerate() {
+            let plus_one = self.values.get(idx + 1);
+            let plus_two = self.values.get(idx + 2);
 
-    fn is_safe_inner(&mut self) -> Result<bool, ReportError> {
-        for v in self.values.clone() {
-            if self.last_value.is_none() {
-                self.last_value = Some(v);
-                continue;
-            }
-
-            // Check diff
-            let diff = (v - self.last_value.unwrap()).abs();
-
-            if diff > 3 {
-                match self.use_free_pass() {
-                    Ok(_) => continue,
-                    Err(_) => return Err(ReportError::TooHighDiff(diff)),
+            match (plus_one, plus_two) {
+                (Some(plus_one), Some(plus_two)) => {
+                    if !Report::compare_within_bounds(*item, *plus_one, 3)
+                        || !Report::compare_within_bounds(*plus_one, *plus_two, 3)
+                        || !Report::is_monotonic_trio(*item, *plus_one, *plus_two)
+                    {
+                        skips += 1;
+                    }
                 }
-            }
-
-            if diff == 0 {
-                match self.use_free_pass() {
-                    Ok(_) => continue,
-                    Err(_) => return Err(ReportError::TooLowDiff(diff)),
-                }
-            }
-
-            let d = self.last_value.unwrap().cmp(&v);
-
-            if self.direction.is_none() {
-                self.direction = Some(d);
-                self.last_value = Some(v);
-                continue;
-            }
-
-            if !self.direction.unwrap().eq(&d) {
-                match self.use_free_pass() {
-                    Ok(_) => continue,
-                    Err(_) => return Err(ReportError::NotMonotonic(self.values.clone())),
-                }
-            }
-
-            self.direction = Some(d);
-            self.last_value = Some(v);
-        }
-        Ok(true)
-    }
-
-    pub fn is_safe(&self) -> Result<(), &str> {
-        let mut is_safe = false;
-        for (idx, _) in self.values.iter().enumerate() {
-            let mut new_values = self.values.clone();
-            new_values.remove(idx);
-
-            let mut report = Report::from_values(new_values, 0);
-            match report.is_safe_inner() {
-                Ok(true) => is_safe = true,
-                Ok(false) => {}
-                Err(_) => {}
+                _ => break,
             }
         }
-        match is_safe {
-            true => Ok(()),
-            false => Err("Not safe"),
+
+        if skips == 2 {
+            println!("Values: {:?}", self.values)
         }
+        true
     }
 }
 
-#[inline]
 pub fn day2() -> Result<i32, Box<dyn Error>> {
     let file = fs::read_to_string("./src/day2/input.txt")?;
     let mut safe_reports = 0;
 
     for line in file.lines() {
-        let report = Report::from_string(line, 1);
-        if report.is_safe().is_ok() {
+        let report = Report::from_string(line);
+        let is_safe = report.is_safe();
+        if is_safe {
             safe_reports += 1;
         }
     }
@@ -129,20 +99,112 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_removal_of_first_item() {
-        let report = Report::from_string("7 2 3 5 6", 1);
-        let _ = report.is_safe();
+    fn compare_within_bounds() {
+        let result = Report::compare_within_bounds(3, 10, 4);
+        assert!(!result);
+
+        let result = Report::compare_within_bounds(3, 5, 3);
+        assert!(result);
+
+        let result = Report::compare_within_bounds(2, -1, 3);
+        assert!(result);
+
+        let result = Report::compare_within_bounds(2, -2, 3);
+        assert!(!result);
     }
 
     #[test]
-    fn test_removal_of_previous_item() {
-        let report = Report::from_string("28 27 25 26 25 24", 1);
-        let _ = report.is_safe();
+    fn is_monotonic_trio() {
+        let result = Report::is_monotonic_trio(3, 10, 4);
+        assert!(!result);
+
+        let result = Report::is_monotonic_trio(3, 1, 4);
+        assert!(!result);
+
+        let result = Report::is_monotonic_trio(3, 4, 4);
+        assert!(!result);
+
+        let result = Report::is_monotonic_trio(-1, 1, 4);
+        assert!(result);
+
+        let result = Report::is_monotonic_trio(5, 4, 2);
+        assert!(result);
     }
 
     #[test]
-    fn test_removal_of_last_item() {
-        let report = Report::from_string("28 27 26 25 20", 1);
-        let _ = report.is_safe();
+    fn pattern_a() {
+        let report = Report::from_string("48 46 47 49 51 54 56");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_b() {
+        let report = Report::from_string("1 1 2 3 4 5");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_c() {
+        let report = Report::from_string("1 2 3 4 5 5");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_d() {
+        let report = Report::from_string("5 1 2 3 4 5");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_e() {
+        let report = Report::from_string("1 4 3 2 1");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_f() {
+        let report = Report::from_string("1 6 7 8 9");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_g() {
+        let report = Report::from_string("1 2 3 4 3");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_h() {
+        let report = Report::from_string("9 8 7 6 7");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_j() {
+        let report = Report::from_string("7 10 8 10 11");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_k() {
+        let report = Report::from_string("29 28 27 25 26 25 22 20");
+        let result = report.is_safe();
+        assert!(result);
+    }
+
+    #[test]
+    fn pattern_i() {
+        let report = Report::from_string("5 8 15 15 17");
+        let result = report.is_safe();
+        assert!(result);
     }
 }

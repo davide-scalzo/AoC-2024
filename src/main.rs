@@ -7,6 +7,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = day2();
     let end = Instant::now();
 
-    println!("Result: {:?}", end - now);
+    println!("Result: {:?}  Time:{:?}", result, end - now);
     Ok(())
 }
