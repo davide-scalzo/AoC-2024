@@ -129,3 +129,19 @@ pub fn day2(input: String) -> Result<i32, Box<dyn Error>> {
     }
     Ok(safe_reports)
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::Report;
+
+    #[test]
+    fn test_ionut_input() {
+        let report = Report::from_string("7 5 6 4 3 2 1");
+
+        let is_safe = report.is_safe();
+
+        assert!(is_safe);
+
+    }
+}
