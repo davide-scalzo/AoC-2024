@@ -10,3 +10,6 @@ criterion = { version = "0.5.1", ffeatures = ["html_reports"] }
 [[bench]]
 name = "aoc"
 harness = false
+
+[dependencies]
+regex = "1.11.1"
