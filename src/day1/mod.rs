@@ -1,9 +1,12 @@
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, error::Error, fs};
+pub fn get_day_1_input() -> Result<String, Box<dyn Error>> {
+    let day_1_input = fs::read_to_string("./src/day1/input.txt")?;
+    Ok(day_1_input)
+}
 
-pub fn day1() -> Result<(u32, u32), Box<dyn std::error::Error>> {
+pub fn day1(input: String) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let mut left_list: Vec<u32> = Vec::with_capacity(1000);
     let mut right_list: Vec<u32> = Vec::with_capacity(1000);
-    let input = fs::read_to_string("./src/day1/input.txt")?;
     let mut occurrences: HashMap<u32, u32> = HashMap::with_capacity(1000);
 
     for line in input.lines() {

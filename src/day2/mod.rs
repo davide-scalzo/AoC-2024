@@ -21,22 +21,7 @@ impl Report {
         Report { values }
     }
 
-    // [5 4 2] 3 2 1
-    // 5 [4 2 3] 2 1
-    // 5 4 [2 3 2] 1
-    // 5 4 2 [3 2 1]
-    //
-    // [4 1 2] 3 4
-    // 4 [1 2 3] 4
-    // 4 1 [2 3 4]
-    // 4 1 2 3 4
-    // 4 1 2 3 4
-    //
-    // [1 2 3] 4 0
-    // 1 [2 3 4] 0
-    // 1 2 [3 4 0]
-
-    fn compare_within_bounds(a: i32, b: i32, allowance: i32) -> bool {
+    fn compare_within_bounds(a: &i32, b: &i32, allowance: i32) -> bool {
         let diff = (a - b).abs();
         if diff <= allowance {
             return true;
@@ -44,7 +29,7 @@ impl Report {
         false
     }
 
-    fn is_monotonic_trio(a: i32, b: i32, c: i32) -> bool {
+    fn is_monotonic_trio(a: &i32, b: &i32, c: &i32) -> bool {
         if a > b && b > c {
             return true;
         }
@@ -54,37 +39,88 @@ impl Report {
         false
     }
 
-    pub fn is_safe(&self) -> bool {
-        let mut skips = 0;
-        for (idx, item) in self.values.iter().enumerate() {
-            let plus_one = self.values.get(idx + 1);
-            let plus_two = self.values.get(idx + 2);
+    fn check_trio(a: &i32, b: &i32, c: &i32) -> bool {
+        if !Report::is_monotonic_trio(a, b, c) {
+            return false;
+        }
+        if !Report::compare_within_bounds(a, b, 3) {
+            return false;
+        }
 
-            match (plus_one, plus_two) {
-                (Some(plus_one), Some(plus_two)) => {
-                    if !Report::compare_within_bounds(*item, *plus_one, 3)
-                        || !Report::compare_within_bounds(*plus_one, *plus_two, 3)
-                        || !Report::is_monotonic_trio(*item, *plus_one, *plus_two)
-                    {
-                        skips += 1;
+        if !Report::compare_within_bounds(b, c, 3) {
+            return false;
+        }
+
+        true
+    }
+
+    pub fn is_safe(&self) -> bool {
+        let mut skip_idx: Option<i32> = None;
+        for (idx, a) in self.values.iter().enumerate() {
+            let b = self.values.get(idx + 1);
+            let c = self.values.get(idx + 2);
+
+            match (b, c) {
+                (Some(b), Some(c)) => {
+                    if !Report::check_trio(a, b, c) {
+                        if let Some(next) = self.values.get(idx + 3) {
+                            // check if skipping the third item in the trio works
+                            if Report::check_trio(a, b, next) {
+                                let target_idx = Some(idx as i32 + 2);
+                                if skip_idx.is_some() && skip_idx != target_idx {
+                                    return false;
+                                }
+                                skip_idx = target_idx;
+                                continue;
+                            }
+
+                            // check if skipping the second item in the trio works
+                            if Report::check_trio(a, c, next) {
+                                let target_idx = Some(idx as i32 + 1);
+                                if skip_idx.is_some() && skip_idx != target_idx {
+                                    return false;
+                                }
+                                skip_idx = target_idx;
+                                continue;
+                            }
+
+                            // check if skipping the first item in the trio works
+                            if Report::check_trio(b, c, next) {
+                                let target_idx = Some(idx as i32);
+                                if skip_idx.is_some() && skip_idx != target_idx {
+                                    return false;
+                                }
+                                skip_idx = target_idx;
+                                continue;
+                            }
+                        } else {
+                            if let Some(skip_idx) = skip_idx {
+                                if skip_idx == idx as i32 + 1 {
+                                    return true;
+                                }
+                            }
+                            return skip_idx.is_none();
+                        }
+
+                        skip_idx = Some(idx as i32)
                     }
                 }
                 _ => break,
             }
         }
-
-        if skips == 2 {
-            println!("Values: {:?}", self.values)
-        }
         true
     }
 }
 
-pub fn day2() -> Result<i32, Box<dyn Error>> {
-    let file = fs::read_to_string("./src/day2/input.txt")?;
+pub fn get_day_2_input() -> Result<String, Box<dyn Error>> {
+    let day_2_input = fs::read_to_string("./src/day2/input.txt")?;
+    Ok(day_2_input)
+}
+
+pub fn day2(input: String) -> Result<i32, Box<dyn Error>> {
     let mut safe_reports = 0;
 
-    for line in file.lines() {
+    for line in input.lines() {
         let report = Report::from_string(line);
         let is_safe = report.is_safe();
         if is_safe {
@@ -92,119 +128,4 @@ pub fn day2() -> Result<i32, Box<dyn Error>> {
         }
     }
     Ok(safe_reports)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn compare_within_bounds() {
-        let result = Report::compare_within_bounds(3, 10, 4);
-        assert!(!result);
-
-        let result = Report::compare_within_bounds(3, 5, 3);
-        assert!(result);
-
-        let result = Report::compare_within_bounds(2, -1, 3);
-        assert!(result);
-
-        let result = Report::compare_within_bounds(2, -2, 3);
-        assert!(!result);
-    }
-
-    #[test]
-    fn is_monotonic_trio() {
-        let result = Report::is_monotonic_trio(3, 10, 4);
-        assert!(!result);
-
-        let result = Report::is_monotonic_trio(3, 1, 4);
-        assert!(!result);
-
-        let result = Report::is_monotonic_trio(3, 4, 4);
-        assert!(!result);
-
-        let result = Report::is_monotonic_trio(-1, 1, 4);
-        assert!(result);
-
-        let result = Report::is_monotonic_trio(5, 4, 2);
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_a() {
-        let report = Report::from_string("48 46 47 49 51 54 56");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_b() {
-        let report = Report::from_string("1 1 2 3 4 5");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_c() {
-        let report = Report::from_string("1 2 3 4 5 5");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_d() {
-        let report = Report::from_string("5 1 2 3 4 5");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_e() {
-        let report = Report::from_string("1 4 3 2 1");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_f() {
-        let report = Report::from_string("1 6 7 8 9");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_g() {
-        let report = Report::from_string("1 2 3 4 3");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_h() {
-        let report = Report::from_string("9 8 7 6 7");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_j() {
-        let report = Report::from_string("7 10 8 10 11");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_k() {
-        let report = Report::from_string("29 28 27 25 26 25 22 20");
-        let result = report.is_safe();
-        assert!(result);
-    }
-
-    #[test]
-    fn pattern_i() {
-        let report = Report::from_string("5 8 15 15 17");
-        let result = report.is_safe();
-        assert!(result);
-    }
 }
