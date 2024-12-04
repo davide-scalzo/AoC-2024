@@ -66,6 +66,8 @@ impl Coord {
 
 #[derive(Debug)]
 struct Grid {
+    height: i16,
+    width: i16,
     x_set: HashSet<Coord>,
     m_set: HashSet<Coord>,
     a_set: HashSet<Coord>,
@@ -111,7 +113,12 @@ impl FromStr for Grid {
                 }
             }
         }
+
+        let height = input.lines().count();
+        let width = input.lines().next().unwrap().chars().count();
         Ok(Grid {
+            height: height as i16,
+            width: width as i16,
             x_set,
             m_set,
             a_set,
@@ -145,13 +152,95 @@ impl Grid {
         //     return self.check_direction(d, c, set, depth + 1);
         // }
     }
+
+    fn check_for_x(&self, a: &Coord) -> (bool, bool) {
+        let mut tlbr_diag = false;
+        let mut trbl_diag = false;
+        let tlbr = (
+            self.m_set
+                .contains(&a.get_neighbour_coord(&Direction::TopLeft)),
+            self.m_set
+                .contains(&a.get_neighbour_coord(&Direction::BottomRight)),
+        );
+
+        let trbl = (
+            self.m_set
+                .contains(&a.get_neighbour_coord(&Direction::TopRight)),
+            self.m_set
+                .contains(&a.get_neighbour_coord(&Direction::BottomLeft)),
+        );
+
+        // here we check for opposing S
+        match tlbr {
+            // M on top left, we check S on bottom right
+            (true, false) => {
+                if self
+                    .s_set
+                    .contains(&a.get_neighbour_coord(&Direction::BottomRight))
+                {
+                    tlbr_diag = true
+                }
+            }
+            (false, true) => {
+                if self
+                    .s_set
+                    .contains(&a.get_neighbour_coord(&Direction::TopLeft))
+                {
+                    tlbr_diag = true
+                }
+            }
+            _ => {}
+        }
+
+        match trbl {
+            // M on top left, we check S on bottom right
+            (true, false) => {
+                if self
+                    .s_set
+                    .contains(&a.get_neighbour_coord(&Direction::BottomLeft))
+                {
+                    trbl_diag = true
+                }
+            }
+            (false, true) => {
+                if self
+                    .s_set
+                    .contains(&a.get_neighbour_coord(&Direction::TopRight))
+                {
+                    trbl_diag = true
+                }
+            }
+            _ => {}
+        }
+
+        (tlbr_diag, trbl_diag)
+    }
+
+    fn part2(&self) -> u64 {
+        let mut count = 0;
+        for a in self.a_set.iter() {
+            if a.x == 0 || a.y == 0 || a.x == self.width - 1 || a.y == self.height - 1 {
+                continue;
+            }
+
+            if let (true, true) = self.check_for_x(a) {
+                count += 1;
+            }
+        }
+
+        count
+    }
 }
 
-pub fn part2() {}
-
-pub fn day4(input: String) -> Result<u64, String> {
+pub fn part1(input: String) -> Result<u64, String> {
     let grid = Grid::from_str(&input)?;
     let count = grid.part1_split();
+    Ok(count)
+}
+
+pub fn part2(input: String) -> Result<u64, String> {
+    let grid = Grid::from_str(&input)?;
+    let count = grid.part2();
     Ok(count)
 }
 
@@ -177,5 +266,25 @@ MXMXAXMASX
         let result = grid.part1_split();
 
         assert_eq!(result, 18);
+    }
+
+    #[test]
+    fn test_day_4_part_2() {
+        let input = r#"
+MMMSXXMASM
+MSAMXMSMSA
+AMXSXMAAMM
+MSAMASMSMX
+XMASAMXAMM
+XXAMMXXAMA
+SMSMSASXSS
+SAXAMASAAA
+MAMMMXMMMM
+MXMXAXMASX
+"#;
+        let grid = Grid::from_str(input).unwrap();
+        let result = grid.part2();
+
+        assert_eq!(result, 9);
     }
 }
