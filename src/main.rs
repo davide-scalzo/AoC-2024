@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use advent_of_code::day3::{day3, get_day_3_input};
+use advent_of_code::day4::{day4, get_day_4_input};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let now = Instant::now();
-    let day_3_input = get_day_3_input()?;
-    let result = day3(day_3_input);
+    let day_4_input = get_day_4_input()?;
+    let result = day4(day_4_input);
     let end = Instant::now();
 
     println!("Result: {:?}  Time:{:?}", result, end - now);
