@@ -12,4 +12,6 @@ name = "aoc"
 harness = false
 
 [dependencies]
+strum = { version = "0.26.3", features = ["derive"] }
 regex = "1.11.1"
+strum_macros = "0.26.4"
